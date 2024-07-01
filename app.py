@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 import shutil
 import tempfile
+import matplotlib.pyplot as plt
+import plotly.express as px
 from io import BytesIO
 
 st.set_page_config(layout="wide")
@@ -138,7 +140,8 @@ db_players = pd.DataFrame(name_players, columns=['names', 'links'])
 
 options_names = ['Escreva um nome'] + db_players['names'].tolist()
 
-col1, col2, col3 = st.columns([.2, .4, .6], gap='large')
+col1, col2, col3, col4, col5 = st.columns([.2, .3, .4, .3, .1], gap='large')
+#col1, col2, col3, col4, col5 = st.columns([.2, .4, .2, .2, .2], gap='large')
 
 with col1:
     selected_name = st.selectbox('Selecione um nome para buscar:', options=options_names)
@@ -181,7 +184,6 @@ else:
             db_era = pd.DataFrame(eras, columns=['year', 'split', 'champs'])
             db_nums = pd.DataFrame(nums)
             db_statistics = pd.merge(db_era, db_nums, left_index=True, right_index=True)
-            print(db_statistics.head())
             db_statistics = db_statistics.rename(columns={0: 'games', 1: 'wins', 2: 'loses', 
                                                           3: 'winRate', 4: 'kills', 5: 'deaths', 
                                                           6: 'assists', 7: 'KDA', 8: 'CS', 9: 'CS/M', 
@@ -189,7 +191,8 @@ else:
                                                           12: 'damage', 13: 'damage per minute', 
                                                           14: 'kill participation', 15: 'kill share', 
                                                           16: 'gold share'})
-            
+            db_statistics['games'] = db_statistics['games'].astype(int)
+            db_statistics['wins'] = db_statistics['wins'].astype(int)
             options_years = ['escolha um ano'] + db_statistics['year'].unique().tolist()
 
             options_splits = ['escolha um SPLIT'] + db_statistics['split'].unique().tolist()
@@ -203,13 +206,123 @@ else:
                         options_splits = ['escolha um camp'] + filtered_splits
                         selected_splits = st.selectbox('Selecione um split para buscar:', options=options_splits)
                     if selected_years == 'All Career':
-                        filtered_stats = db_statistics[(db_statistics['year'] == selected_years)]    
+                        filtered_stats = db_statistics[(db_statistics['year'] == selected_years)]
+                        max_lines = filtered_stats.nlargest(3, 'games')
                         with col3:
-                            st.dataframe(filtered_stats)
+                            #st.dataframe(filtered_stats)
+                            
+                            sum_games = int(filtered_stats['games'].sum())
+                            sum_games_win = int(filtered_stats['wins'].sum())
+                            data = {
+                                        'category': ['Winrate', 'Loserate'],
+                                        'value':  [sum_games_win, (sum_games - sum_games_win)]
+                            }
+                            df = pd.DataFrame(data)
+                            
+                            fig = px.pie(df, values='value', names='category', 
+                                         hole=0.5, color_discrete_sequence=['#FF6464', '#91C483'])
+
+                            fig.update_layout(
+                                title="Winrate in " + selected_years,
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                width=320,  # largura
+                                height=320  # altura
+                            )
+                            st.plotly_chart(fig)
+                        with col4:
+                            st.write('Campeões mais jogados:')
+                            st.write(max_lines['champs'].iloc[0])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[0].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)                           
+                            st.write(max_lines['champs'].iloc[1])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[1].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)  
+                            st.write(max_lines['champs'].iloc[2])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[2].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)
+                        with col5:
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[0]}V - {max_lines['loses'].iloc[0]}D"
+                            st.write(textwins)
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[1]}V - {max_lines['loses'].iloc[1]}D"
+                            st.write(textwins)
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[2]}V - {max_lines['loses'].iloc[2]}D"
+                            st.write(textwins)
                     else: 
                         if selected_splits != 'escolha um camp':
                             filtered_stats = db_statistics[(db_statistics['year'] == selected_years) & (db_statistics['split'] == selected_splits)]    
-                            with col3:
-                                st.dataframe(filtered_stats)
+                        else:
+                            filtered_stats = db_statistics[(db_statistics['year'] == selected_years)]
+                        max_lines = filtered_stats.nlargest(3, 'games')
+                        with col3:                                                          
+                            #st.dataframe(filtered_stats)
+                            sum_games = int(filtered_stats['games'].sum())
+                            print(sum_games)
+                            sum_games_win = int(filtered_stats['wins'].sum())
+                            print(sum_games_win)
+                            data = {
+                                        'category': ['Winrate', 'Loserate'],
+                                        'value':  [sum_games_win, (sum_games - sum_games_win)]
+                            }
+                            df = pd.DataFrame(data)
+                            
+                            fig = px.pie(df, values='value', names='category', 
+                                         hole=0.5, color_discrete_sequence=['#FF6464', '#91C483'])
+                            if selected_splits != 'escolha um camp':
+                                title="Winrate in " + selected_splits
+                            else:
+                                title="Winrate in " + selected_years
+                            fig.update_layout(
+                                title=title,
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                width=320,  # largura
+                                height=320  # altura
+                            )
+                            st.plotly_chart(fig)
+                        with col4:
+                            st.write('Campeões mais jogados:')
+                            st.write(max_lines['champs'].iloc[0])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[0].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)                           
+                            st.write(max_lines['champs'].iloc[1])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[1].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)  
+                            st.write(max_lines['champs'].iloc[2])
+                            valor_sem_percentagem = max_lines['winRate'].iloc[2].replace("%", "")
+                            valor_float = float(valor_sem_percentagem)
+                            progress_bar = st.progress(valor_float/100)
+                        with col5:
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[0]}V - {max_lines['loses'].iloc[0]}D"
+                            st.write(textwins)
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[1]}V - {max_lines['loses'].iloc[1]}D"
+                            st.write(textwins)
+                            st.write('')
+                            st.write('')
+                            textwins = f"{max_lines['wins'].iloc[2]}V - {max_lines['loses'].iloc[2]}D"
+                            st.write(textwins)
+                        
+                                
 
             
